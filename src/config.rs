@@ -1,15 +1,11 @@
-use figment::{
-    providers::{Format, Toml},
-    value::Map,
-    Figment,
-};
 use serde::{Deserialize, Serialize};
 
 use clap::Parser;
+use toml::Table;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppConfig {
-    pub clients_mac_address: Map<String, String>,
+    pub clients_mac_address: Table,
 }
 
 #[derive(Parser)]
@@ -27,13 +23,12 @@ pub struct Cli {
 pub fn get_mac_to_boot() -> (String, String) {
     let cli = Cli::parse();
 
-    let cfg = match Figment::new()
-        .merge(Toml::file(&cli.cfg_file_path))
-        .extract::<AppConfig>()
-    {
-        Ok(cfg) => cfg,
-        Err(err) => panic!("Error parsing cfg file {}, {}", cli.cfg_file_path, err),
-    };
-    let mac_address = cfg.clients_mac_address[&cli.name].clone();
+    let cfg =
+        toml::from_str::<AppConfig>(&std::fs::read_to_string(&cli.cfg_file_path).unwrap()).unwrap();
+
+    let mac_address = cfg.clients_mac_address[&cli.name]
+        .as_str()
+        .unwrap()
+        .to_string();
     (cli.name, mac_address)
 }
